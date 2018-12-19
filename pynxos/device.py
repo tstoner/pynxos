@@ -1,5 +1,6 @@
 import signal
 import re
+from .lib.uds_client import UDSClient
 from .lib.rpc_client import RPCClient
 from .lib import convert_dict_by_key, converted_list_from_table, strip_unicode
 from .lib.data_model import key_maps
@@ -21,7 +22,12 @@ class Device(object):
         self.timeout = timeout
         self.verify = verify
 
-        self.rpc = RPCClient(host, username, password, transport=transport, port=port, verify=self.verify)
+        if username and password:
+            self.client = RPCClient(host, username, password, transport=transport, port=port, verify=self.verify)
+        else:
+            username = username if username else 'admin'
+            uds_path = '/tmp/nginx_local/nginx_1_be_nxapi.sock'
+            self.client = UDSClient(uds_path, username)
 
     def _cli_error_check(self, command_response):
         error = command_response.get(u'error')
@@ -36,7 +42,7 @@ class Device(object):
         if not isinstance(commands, list):
             commands = [commands]
 
-        rpc_response = self.rpc.send_request(commands, method=method, timeout=self.timeout)
+        rpc_response = self.client.send_request(commands, method=method, timeout=self.timeout)
 
         text_response_list = []
         for command_response in rpc_response:
